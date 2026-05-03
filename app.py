@@ -26,7 +26,7 @@ labels = [
 # UI
 # ==============================
 st.title("👕 Fashion MNIST Classifier")
-st.info("1. Upload gambar\n2. Klik Prediksi")
+st.info("1. Upload gambar\n2. Klik tombol Prediksi")
 
 uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
 
@@ -53,19 +53,26 @@ def preprocess(image):
     return img_array, image
 
 # ==============================
-# PREDICT FUNCTION (FIX ERROR)
+# PREDICT FUNCTION (FINAL FIX)
 # ==============================
 def predict_model(model, img_array):
     try:
-        # Kalau model Keras biasa
+        # CASE 1: Keras model biasa
         if hasattr(model, "predict"):
-            pred = model.predict(img_array)
-        else:
-            # Kalau SavedModel (no .predict)
-            pred = model(img_array)
-            pred = pred.numpy()
+            return model.predict(img_array)
 
-        return pred
+        # CASE 2: SavedModel hasil export()
+        elif hasattr(model, "signatures"):
+            infer = model.signatures["serving_default"]
+            output = infer(tf.constant(img_array))
+
+            # Ambil output tensor pertama
+            output = list(output.values())[0].numpy()
+            return output
+
+        else:
+            st.error("Model tidak dikenali")
+            return None
 
     except Exception as e:
         st.error(f"Error saat prediksi: {e}")
@@ -93,7 +100,7 @@ if uploaded_file is not None:
                 class_index = np.argmax(prediction)
                 confidence = np.max(prediction)
 
-                st.success(f"Prediction: {labels[class_index]}")
+                st.success(f"Prediction: **{labels[class_index]}**")
                 st.write(f"Confidence: {confidence:.4f}")
 
                 # ==============================
