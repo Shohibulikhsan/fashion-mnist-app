@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 # ==============================
-# LOAD MODEL (SAVED_MODEL)
+# LOAD MODEL (SAVED_MODEL SAFE)
 # ==============================
 @st.cache_resource
 def load_model():
@@ -26,7 +26,7 @@ labels = [
 # UI
 # ==============================
 st.title("👕 Fashion MNIST Classifier")
-st.info("Upload gambar lalu lihat hasil prediksi")
+st.info("1. Upload gambar\n2. Klik Prediksi")
 
 uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
 
@@ -36,12 +36,12 @@ uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
 def preprocess(image):
     image = image.convert('L')
 
-    # Resize + crop (biar tidak distorsi)
+    # Resize + crop
     image = ImageOps.fit(image, (28, 28), method=Image.Resampling.LANCZOS)
 
     img_array = np.array(image).astype("float32") / 255.0
 
-    # Auto invert (biar cocok dengan dataset)
+    # Auto invert (biar sesuai dataset)
     if np.mean(img_array) > 0.5:
         img_array = 1 - img_array
 
@@ -53,7 +53,26 @@ def preprocess(image):
     return img_array, image
 
 # ==============================
-# PREDICT
+# PREDICT FUNCTION (FIX ERROR)
+# ==============================
+def predict_model(model, img_array):
+    try:
+        # Kalau model Keras biasa
+        if hasattr(model, "predict"):
+            pred = model.predict(img_array)
+        else:
+            # Kalau SavedModel (no .predict)
+            pred = model(img_array)
+            pred = pred.numpy()
+
+        return pred
+
+    except Exception as e:
+        st.error(f"Error saat prediksi: {e}")
+        return None
+
+# ==============================
+# MAIN FLOW
 # ==============================
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
@@ -63,22 +82,25 @@ if uploaded_file is not None:
     if model is None:
         st.error("Model gagal dimuat. Periksa folder saved_model")
     else:
-        img_array, processed = preprocess(image)
+        if st.button("🔍 Prediksi"):
+            img_array, processed = preprocess(image)
 
-        st.image(processed, caption="Processed (Input Model)", width=200)
+            st.image(processed, caption="Processed (Input Model)", width=200)
 
-        prediction = model.predict(img_array)
-        class_index = np.argmax(prediction)
-        confidence = np.max(prediction)
+            prediction = predict_model(model, img_array)
 
-        st.success(f"Prediction: {labels[class_index]}")
-        st.write(f"Confidence: {confidence:.4f}")
+            if prediction is not None:
+                class_index = np.argmax(prediction)
+                confidence = np.max(prediction)
 
-        # ==============================
-        # TOP 3
-        # ==============================
-        st.subheader("Top 3 Predictions")
-        top3 = np.argsort(prediction[0])[-3:][::-1]
+                st.success(f"Prediction: {labels[class_index]}")
+                st.write(f"Confidence: {confidence:.4f}")
 
-        for i in top3:
-            st.write(f"{labels[i]}: {prediction[0][i]:.4f}")
+                # ==============================
+                # TOP 3
+                # ==============================
+                st.subheader("Top 3 Predictions")
+                top3 = np.argsort(prediction[0])[-3:][::-1]
+
+                for i in top3:
+                    st.write(f"{labels[i]}: {prediction[0][i]:.4f}")
