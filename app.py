@@ -1,102 +1,56 @@
 import streamlit as st
-import tensorflow as tf
 import numpy as np
 from PIL import Image
+import tensorflow as tf
 
-# =========================
-
-# CONFIG PAGE
-
-# =========================
-
-st.set_page_config(
-page_title="Fashion Classifier",
-page_icon="👕",
-layout="centered"
-)
-
-# =========================
-
-# LOAD MODEL (CACHE BIAR CEPAT)
-
-# =========================
-
+# ===============================
+# Load Model
+# ===============================
 @st.cache_resource
 def load_model():
-return tf.keras.models.load_model("model.h5")
+    model = tf.keras.models.load_model("model.h5")
+    return model
 
 model = load_model()
 
-# =========================
-
-# LABEL
-
-# =========================
-
-labels = [
-"T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
-"Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"
+# ===============================
+# Label Fashion MNIST
+# ===============================
+class_names = [
+    "T-shirt/top",
+    "Trouser",
+    "Pullover",
+    "Dress",
+    "Coat",
+    "Sandal",
+    "Shirt",
+    "Sneaker",
+    "Bag",
+    "Ankle boot"
 ]
 
-# =========================
-
-# PREPROCESSING
-
-# =========================
-
-def preprocess_image(image):
-image = image.convert("L")            # RGB → Grayscale
-image = image.resize((28, 28))        # Resize
-image = np.array(image) / 255.0       # Normalisasi
-image = image.reshape(1, 28, 28, 1)   # Reshape
-return image
-
-# =========================
-
+# ===============================
 # UI
-
-# =========================
-
+# ===============================
 st.title("👕 Fashion MNIST Classifier")
-st.write("Upload gambar pakaian (sepatu, baju, dll) untuk diprediksi oleh model CNN")
+st.write("Upload gambar (28x28 grayscale) untuk prediksi")
 
-# Sidebar
-
-st.sidebar.title("Tentang")
-st.sidebar.info(
-"Aplikasi ini menggunakan model CNN yang dilatih pada dataset Fashion MNIST.\n\n"
-"Model melakukan klasifikasi gambar ke dalam 10 kategori pakaian."
-)
-
-# Upload file
-
-uploaded_file = st.file_uploader("Upload gambar", type=["jpg", "png", "jpeg"])
+uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-image = Image.open(uploaded_file)
+    # Load image
+    image = Image.open(uploaded_file).convert("L")  # grayscale
+    st.image(image, caption="Uploaded Image", width=150)
 
-```
-st.image(image, caption="Gambar Input", use_column_width=True)
+    # Preprocessing
+    image = image.resize((28, 28))
+    img_array = np.array(image)
 
-try:
-    # Preprocess
-    img = preprocess_image(image)
+    img_array = img_array / 255.0
+    img_array = img_array.reshape(1, 28, 28, 1)
 
     # Predict
-    prediction = model.predict(img)
+    prediction = model.predict(img_array)
     predicted_class = np.argmax(prediction)
-    confidence = float(np.max(prediction))
 
-    # Output
-    st.subheader("Hasil Prediksi:")
-    st.success(f"{labels[predicted_class]}")
-
-    st.write(f"Confidence: {confidence:.2f}")
-
-    # Probabilitas
-    st.subheader("Distribusi Probabilitas:")
-    st.bar_chart(prediction[0])
-
-except Exception as e:
-    st.error(f"Terjadi error: {e}")
-```
+    st.success(f"Prediksi: **{class_names[predicted_class]}**")
