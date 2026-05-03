@@ -4,12 +4,12 @@ from PIL import Image
 import tensorflow as tf
 
 # ===============================
-# Load Model (.keras ONLY)
+# Load Model
 # ===============================
 @st.cache_resource
 def load_model():
     try:
-        model = tf.keras.models.load_model("model.keras")
+        model = tf.keras.models.load_model("model_compatible.keras")
         return model
     except Exception as e:
         st.error(f"Gagal load model: {e}")
@@ -37,35 +37,27 @@ class_names = [
 # UI
 # ===============================
 st.title("👕 Fashion MNIST Classifier")
-st.write("Upload gambar (28x28 grayscale) lalu klik Prediksi")
+st.info("1. Upload gambar\n2. Klik tombol Prediksi")
 
 uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
 
-if uploaded_file is not None and model is not None:
-    # Preview image
+if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("L")
     st.image(image, caption="Uploaded Image", width=150)
 
-    # Tombol prediksi
-    if st.button("🔍 Prediksi"):
-        # ===============================
-        # Preprocessing
-        # ===============================
-        image_resized = image.resize((28, 28))
-        img_array = np.array(image_resized)
+    if model is None:
+        st.error("Model gagal dimuat. Periksa file model_compatible.keras")
+    else:
+        if st.button("🔍 Prediksi"):
+            image_resized = image.resize((28, 28))
+            img_array = np.array(image_resized)
 
-        img_array = img_array / 255.0
-        img_array = img_array.reshape(1, 28, 28, 1)
+            img_array = img_array / 255.0
+            img_array = img_array.reshape(1, 28, 28, 1)
 
-        # ===============================
-        # Predict
-        # ===============================
-        prediction = model.predict(img_array)
-        predicted_class = np.argmax(prediction)
-        confidence = np.max(prediction)
+            prediction = model.predict(img_array)
+            predicted_class = np.argmax(prediction)
+            confidence = np.max(prediction)
 
-        # ===============================
-        # Output
-        # ===============================
-        st.success(f"Prediksi: **{class_names[predicted_class]}**")
-        st.write(f"Confidence: {confidence:.2f}")
+            st.success(f"Prediksi: **{class_names[predicted_class]}**")
+            st.write(f"Confidence: {confidence:.2f}")
